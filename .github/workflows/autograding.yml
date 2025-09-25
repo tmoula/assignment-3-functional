@@ -1,0 +1,193 @@
+name: Autograding
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Setup Gradle caching
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Run tests
+      id: test
+      run: |
+        ./gradlew test --no-daemon 2>&1 | tee test-output.log
+        echo "exit_code=$?" >> $GITHUB_OUTPUT
+      continue-on-error: true
+
+    - name: Parse test results
+      id: parse
+      if: always()
+      run: |
+        # Extract test counts from the output
+        if grep -q "tests completed" test-output.log; then
+          TOTAL=$(grep -oE '[0-9]+ tests completed' test-output.log | grep -oE '^[0-9]+')
+          FAILED=$(grep -oE '[0-9]+ failed' test-output.log | grep -oE '^[0-9]+' || echo "0")
+          PASSED=$((TOTAL - FAILED))
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "percentage=$((PASSED * 100 / TOTAL))" >> $GITHUB_OUTPUT
+        else
+          echo "total=35" >> $GITHUB_OUTPUT
+          echo "passed=0" >> $GITHUB_OUTPUT
+          echo "failed=35" >> $GITHUB_OUTPUT
+          echo "percentage=0" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Generate test report
+      if: always()
+      run: |
+        echo "## Test Results Summary"
+        echo "📊 **${{ steps.parse.outputs.passed }}/${{ steps.parse.outputs.total }}** tests passing (${{ steps.parse.outputs.percentage }}%)"
+        echo
+        if [ "${{ steps.parse.outputs.failed }}" = "0" ]; then
+          echo "🎉 Perfect! All tests pass!"
+        elif [ "${{ steps.parse.outputs.passed }}" -ge "30" ]; then
+          echo "🌟 Excellent work! Almost there!"
+        elif [ "${{ steps.parse.outputs.passed }}" -ge "20" ]; then
+          echo "💪 Good progress! Keep going!"
+        elif [ "${{ steps.parse.outputs.passed }}" -ge "10" ]; then
+          echo "👍 Nice start! You're making progress!"
+        else
+          echo "🚀 Just getting started - you've got this!"
+        fi
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          build/test-results/test/
+          build/reports/tests/test/
+
+    - name: Write GitHub Step Summary
+      if: always()
+      run: |
+        {
+          echo "## 🧪 Assignment 3: Functional Programming Test Summary"
+          echo
+          echo "### 📊 Test Progress"
+          echo "| Metric | Value |"
+          echo "|--------|-------|"
+          echo "| Total Tests | ${{ steps.parse.outputs.total }} |"
+          echo "| Passed | ✅ ${{ steps.parse.outputs.passed }} |"
+          echo "| Failed | ❌ ${{ steps.parse.outputs.failed }} |"
+          echo "| Success Rate | ${{ steps.parse.outputs.percentage }}% |"
+          echo
+
+          # Progress bar
+          FILLED=$(((${{ steps.parse.outputs.passed }} * 20) / ${{ steps.parse.outputs.total }}))
+          EMPTY=$((20 - FILLED))
+          echo -n "Progress: ["
+          for i in $(seq 1 $FILLED); do echo -n "█"; done
+          for i in $(seq 1 $EMPTY); do echo -n "░"; done
+          echo "] ${{ steps.parse.outputs.percentage }}%"
+          echo
+
+          echo "### 📝 Assignment Topics"
+          echo "This assignment tests your understanding of:"
+          echo "- ✨ Stream API operations (filter, map, reduce, collect)"
+          echo "- 🔍 Optional for null-safe operations"
+          echo "- 🎯 Lambda expressions and method references"
+          echo "- 🏗️ Custom functional interfaces"
+          echo "- 🔗 Function composition and higher-order functions"
+          echo
+
+          if [ "${{ steps.parse.outputs.failed }}" = "0" ]; then
+            echo "### 🎉 Congratulations!"
+            echo "You've successfully completed all functional programming challenges!"
+          else
+            echo "### 💡 Next Steps"
+            echo "1. Review the failing tests in the test report"
+            echo "2. Focus on one test method at a time"
+            echo "3. Use the test names as hints for what to implement"
+            echo "4. Run \`./gradlew test\` locally for detailed error messages"
+          fi
+          echo
+          echo "📁 **Artifacts:** Test reports have been uploaded as 'test-results'"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const passed = ${{ steps.parse.outputs.passed }};
+          const total = ${{ steps.parse.outputs.total }};
+          const failed = ${{ steps.parse.outputs.failed }};
+          const percentage = ${{ steps.parse.outputs.percentage }};
+
+          let emoji = '🚀';
+          if (percentage === 100) emoji = '🎉';
+          else if (percentage >= 80) emoji = '🌟';
+          else if (percentage >= 60) emoji = '💪';
+          else if (percentage >= 40) emoji = '👍';
+          else if (percentage >= 20) emoji = '📈';
+
+          let message = `## ${emoji} Test Results: Assignment 3 - Functional Programming\n\n`;
+          message += `### 📊 Progress: ${passed}/${total} tests passing (${percentage}%)\n\n`;
+
+          // Progress bar
+          const filled = Math.floor(passed * 20 / total);
+          const empty = 20 - filled;
+          message += '`[' + '█'.repeat(filled) + '░'.repeat(empty) + ']`\n\n';
+
+          if (failed === 0) {
+            message += '### 🎊 Perfect Score!\n';
+            message += 'All functional programming tests pass! Excellent work mastering:\n';
+            message += '- Stream operations\n';
+            message += '- Optional handling\n';
+            message += '- Lambda expressions\n';
+            message += '- Functional interfaces\n';
+          } else {
+            message += `### 📝 ${failed} tests still need implementation\n\n`;
+            message += '**Areas to focus on:**\n';
+            if (passed < 10) {
+              message += '- Start with `TaskAnalyzer.filterTasks()` - basic stream filtering\n';
+              message += '- Implement `getTaskTitles()` - simple map operation\n';
+              message += '- Try `findTaskById()` - introduction to Optional\n';
+            } else if (passed < 20) {
+              message += '- Work on grouping operations with `Collectors`\n';
+              message += '- Implement Optional chaining methods\n';
+              message += '- Complete the custom functional interfaces\n';
+            } else {
+              message += '- Finish the advanced functional patterns in `TaskProcessingEngine`\n';
+              message += '- Complete function composition methods\n';
+              message += '- Implement the remaining higher-order functions\n';
+            }
+            message += '\n**Tip:** Run `./gradlew test` locally to see detailed error messages.\n';
+          }
+
+          // Comment on PR
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: message
+          });
+
+    - name: Check build
+      run: |
+        echo "Checking that code compiles..."
+        ./gradlew build --no-daemon
