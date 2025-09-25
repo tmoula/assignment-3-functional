@@ -1,11 +1,9 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.5"
-    id("io.spring.dependency-management") version "1.1.6"
 }
 
 group = "edu.trincoll"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 
 java {
     toolchain {
@@ -18,10 +16,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
     testImplementation("org.assertj:assertj-core:3.26.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
