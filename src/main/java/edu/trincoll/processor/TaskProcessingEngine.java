@@ -11,73 +11,86 @@ import java.util.stream.Stream;
 
 public class TaskProcessingEngine {
 
-    // TODO: Implement pipeline processing using Function composition
+    // Function composition over List<Task>
     public List<Task> processPipeline(
             List<Task> tasks,
             List<Function<List<Task>, List<Task>>> operations) {
-        // Implementation needed
-        return null;
+
+        if (tasks == null) return null;
+        if (operations == null || operations.isEmpty()) return new ArrayList<>(tasks);
+
+        Function<List<Task>, List<Task>> pipeline =
+                operations.stream().reduce(Function.identity(), Function::andThen);
+
+        return pipeline.apply(new ArrayList<>(tasks));
     }
 
-    // TODO: Implement using Supplier for lazy evaluation
+    // Supplier for lazy default
     public Task getOrCreateDefault(Optional<Task> taskOpt, Supplier<Task> defaultSupplier) {
-        // Implementation needed
-        return null;
+        return taskOpt.orElseGet(defaultSupplier);
     }
 
-    // TODO: Implement using Consumer for side effects
-    public void processTasksWithSideEffects(
-            List<Task> tasks,
-            Consumer<Task> sideEffect) {
-        // Implementation needed
+    // Consumer side effects
+    public void processTasksWithSideEffects(List<Task> tasks, Consumer<Task> sideEffect) {
+        if (tasks == null || sideEffect == null) return;
+        tasks.forEach(sideEffect);
     }
 
-    // TODO: Implement using BiFunction
+    // BiFunction merge
     public Task mergeTasks(Task task1, Task task2, BiFunction<Task, Task, Task> merger) {
-        // Implementation needed
-        return null;
+        return (merger == null) ? null : merger.apply(task1, task2);
     }
 
-    // TODO: Implement using UnaryOperator
+    // UnaryOperator transform all
     public List<Task> transformAll(List<Task> tasks, UnaryOperator<Task> transformer) {
-        // Implementation needed
-        return null;
+        if (tasks == null) return List.of();
+        if (transformer == null) return new ArrayList<>(tasks);
+        return tasks.stream().map(transformer).toList();
     }
 
-    // TODO: Implement using custom functional interfaces
+    // Custom functional interfaces: filter + transform
     public List<Task> filterAndTransform(
             List<Task> tasks,
             TaskPredicate filter,
             TaskTransformer transformer) {
-        // Implementation needed
-        return null;
+
+        if (tasks == null) return List.of();
+        Predicate<Task> p = (filter == null) ? t -> true : filter::test;
+        Function<Task, Task> m = (transformer == null) ? Function.identity() : transformer;
+        return tasks.stream().filter(p).map(m).toList();
     }
 
-    // TODO: Implement batch processing with TaskProcessor
-    public void batchProcess(
-            List<Task> tasks,
-            int batchSize,
-            TaskProcessor processor) {
-        // Implementation needed
+    // Batch processing with TaskProcessor
+    public void batchProcess(List<Task> tasks, int batchSize, TaskProcessor processor) {
+        if (tasks == null || processor == null || batchSize <= 0) return;
+        for (int i = 0; i < tasks.size(); i += batchSize) {
+            List<Task> slice = tasks.subList(i, Math.min(i + batchSize, tasks.size()));
+            processor.process(slice);
+        }
     }
 
-    // TODO: Implement Optional chaining
+    // Optional chaining: highest-priority title
     public Optional<String> getHighestPriorityTaskTitle(List<Task> tasks) {
-        // Implementation needed
-        return Optional.empty();
+        if (tasks == null || tasks.isEmpty()) return Optional.empty();
+        return tasks.stream()
+                .max(Comparator.comparingInt(t -> t.priority().getWeight()))
+                .map(Task::title);
     }
 
-    // TODO: Implement stream generation using Stream.generate
+    // Infinite stream via Supplier
     public Stream<Task> generateTaskStream(Supplier<Task> taskSupplier) {
-        // Implementation needed
-        return Stream.empty();
+        return taskSupplier == null ? Stream.empty() : Stream.generate(taskSupplier);
     }
 
-    // TODO: Implement using Comparator composition
-    public List<Task> sortByMultipleCriteria(
-            List<Task> tasks,
-            List<Comparator<Task>> comparators) {
-        // Implementation needed
-        return null;
+    // Compose multiple comparators
+    public List<Task> sortByMultipleCriteria(List<Task> tasks, List<Comparator<Task>> comparators) {
+        if (tasks == null) return List.of();
+        if (comparators == null || comparators.isEmpty()) return new ArrayList<>(tasks);
+
+        Comparator<Task> composite = comparators.get(0);
+        for (int i = 1; i < comparators.size(); i++) {
+            composite = composite.thenComparing(comparators.get(i));
+        }
+        return tasks.stream().sorted(composite).toList();
     }
 }
