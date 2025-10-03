@@ -5,27 +5,43 @@ import edu.trincoll.model.Task;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+/**
+ * AI Collaboration Report:
+ * Tool: Chatgpt 5
+ *
+ * Most Helpful Prompts:
+ * 1. "What are lambdas, predicates, optional, etc"
+ * 2. "What's happening in this error message"
+ *
+ * Concepts Learned:
+ * - Manipulating data using functional programming is easier than OOP
+ *
+ * Team: Taha, Daniel, Varvara
+ */
 
 public class TaskAnalyzer {
     private final List<Task> tasks;
 
     public TaskAnalyzer(List<Task> tasks) {
-        this.tasks = new ArrayList<>(tasks);
+        // Keep a live reference so any tasks added after construction are visible
+        this.tasks = java.util.Objects.requireNonNull(tasks);
     }
 
-    // TODO: Implement using streams and filter
+    // streams + filter
     public List<Task> filterTasks(Predicate<Task> predicate) {
-        // Implementation needed
-        return null;
+        if (predicate == null) return new ArrayList<>(tasks);
+        return tasks.stream().filter(predicate).toList();
     }
 
-    // TODO: Implement using Optional
+    // Optional find by id
     public Optional<Task> findTaskById(Long id) {
-        // Implementation needed
-        return Optional.empty();
+        return tasks.stream().filter(
+                        t -> Objects.equals(t.id(), id))
+                .findFirst();
     }
 
     // TODO: Implement using streams, sorted, and limit
